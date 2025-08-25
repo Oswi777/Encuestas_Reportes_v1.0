@@ -8,6 +8,4 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.8
-      # Si usas secrets agrega aquí:
-      # - key: SECRET_KEY
-      #   generateValue: true
+      # No pongas secrets aquí; usa el panel de Render
