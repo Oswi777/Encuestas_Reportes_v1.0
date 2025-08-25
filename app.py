@@ -3,7 +3,7 @@ import json
 import sqlite3
 import tempfile
 from datetime import datetime
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 
 # ---------- DB path ----------
@@ -12,21 +12,24 @@ def resolve_db_path():
     env_db = os.getenv("SQLITE_PATH")
     if env_db:
         return env_db
-
-    # En plataformas tipo Render/Koyeb el FS del contenedor es efímero;
-    # guardamos el .db en /tmp para evitar problemas de permisos.
+    # En plataformas PaaS el FS es efímero; ponemos el .db en /tmp
     if os.getenv("RENDER") or os.getenv("KOYEB") or os.getenv("PORT"):
         return os.path.join(tempfile.gettempdir(), "encuesta.db")
-
     # En local, junto al app.py
     return os.path.join(os.path.dirname(__file__), "encuesta.db")
 
 DB = resolve_db_path()
 ALLOWED_TIPOS = {"comedor", "transporte"}
 
+# ---------- Flask app ----------
 app = Flask(__name__)
-# Durante pruebas dejar abierto; en prod limita orígenes
+# CORS solo para API; sirve frontend sin CORS
 CORS(app, resources={r"/api/*": {"origins": "*"}})
+
+# Directorios base para servir páginas y assets
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+ENC_DIR  = os.path.join(BASE_DIR, "Encuestas")
+REP_DIR  = os.path.join(BASE_DIR, "reportes")
 
 # ---------- DB helpers ----------
 def get_db():
@@ -204,6 +207,58 @@ def resumen():
 
     return jsonify(rows)
 
+# ---------- Servido de páginas ----------
+@app.route("/comedor")
+def serve_comedor():
+    """
+    Sirve index_Comedor.html.
+    Ajusta esta ruta si tu archivo vive dentro de /Encuestas.
+    """
+    # Si el archivo está en /Encuestas:
+    # return send_from_directory(ENC_DIR, "index_Comedor.html")
+    # Si el archivo está en la raíz del repo:
+    return send_from_directory(BASE_DIR, "index_Comedor.html")
+
+@app.route("/transporte")
+def serve_transporte():
+    """
+    Sirve index_Transporte.html.
+    Ajusta la línea según dónde esté realmente el archivo.
+    """
+    # return send_from_directory(ENC_DIR, "index_Transporte.html")
+    return send_from_directory(BASE_DIR, "index_Transporte.html")
+
+@app.route("/reportes")
+def serve_reportes():
+    """
+    Sirve la vista principal de reportes desde /reportes/reportes.html
+    """
+    return send_from_directory(REP_DIR, "reportes.html")
+
+# ---------- Servido de assets compartidos ----------
+def _multi_send(subdirs, filename):
+    for root in subdirs:
+        full = os.path.join(root, filename)
+        if os.path.isfile(full):
+            return send_from_directory(root, filename)
+    return jsonify({"error": "archivo no encontrado", "path": filename}), 404
+
+# /assets/... -> primero Encuestas/assets, luego reportes/assets
+@app.route("/assets/<path:filename>")
+def serve_assets(filename):
+    return _multi_send(
+        [os.path.join(ENC_DIR, "assets"), os.path.join(REP_DIR, "assets")],
+        filename
+    )
+
+# /js/... -> primero Encuestas/js, luego reportes/js
+@app.route("/js/<path:filename>")
+def serve_js(filename):
+    return _multi_send(
+        [os.path.join(ENC_DIR, "js"), os.path.join(REP_DIR, "js")],
+        filename
+    )
+
 # --- Inicialización segura de la DB (compatible con Flask 3.x) ---
 try:
     init_db()
@@ -211,6 +266,6 @@ except Exception as e:
     print("Warning: init_db failed:", e)
 
 if __name__ == "__main__":
-    # En local lee PORT si existe (útil para compatibilidad), por defecto 8000
+    # En local lee PORT si existe (compatibilidad), por defecto 8000
     port = int(os.environ.get("PORT", 8000))
     app.run(host="0.0.0.0", port=port, debug=True)
