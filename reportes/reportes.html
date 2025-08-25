@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Reportes · Encuestas</title>
+
+  <!-- Estilos -->
+  <link rel="stylesheet" href="css/reportes.css"/>
+
+  <!-- Vendors -->
+  <!-- Chart.js (gráficas) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <!-- html2canvas (captura a imagen para PDF) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <!-- jsPDF (genera el PDF) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <img src="assets/BorgWarner_Logo_Technology_Blue.png" alt="BorgWarner" class="logo"/>
+      <div>
+        <h1>Reportes · Encuestas</h1>
+        <div class="sub"></div>
+      </div>
+    </header>
+
+    <!-- Toolbar -->
+    <section class="toolbar card">
+      <div class="row">
+        <div class="inp">
+          <label>API URL</label>
+          <input id="api" value="http://localhost:8000"/>
+        </div>
+
+        <div class="inp">
+          <label>Tipo de encuesta</label>
+          <select id="fTipo">
+            <option value="">Todas</option>
+            <option value="comedor">Comedor</option>
+            <option value="transporte">Transporte</option>
+          </select>
+        </div>
+
+        <div class="inp">
+          <label>Desde</label>
+          <input id="desde" type="date"/>
+        </div>
+        <div class="inp">
+          <label>Hasta</label>
+          <input id="hasta" type="date"/>
+        </div>
+
+<div class="inp">
+  <label>Turno</label>
+  <select id="fTurno">
+    <option value="">Todos</option>
+    <option value="T1">1° Turno (6:00 am - 2:00 pm)</option>
+    <option value="T2">2° Turno (2:00 pm - 11:00 pm)</option>
+    <option value="T3">3° Turno (11:00 pm - 6:00 am)</option>
+    <option value="MIXTO">Mixto (8:24 am - 6:00 pm)</option>
+    <option value="4X3">4X3 (6:00 am - 6:00 pm)</option>
+  </select>
+</div>
+
+
+        <div class="inp">
+          <label>Sede</label>
+          <input id="fSede" placeholder="ej. Saltillo"/>
+        </div>
+
+        <div class="inp">
+          <label>Dispositivo</label>
+          <input id="fDispositivo" placeholder="ej. tablet-comedor-01"/>
+        </div>
+
+        <div class="inp">
+          <label>Buscar (calificación o motivo)</label>
+          <input id="fTexto" placeholder="ej. Sabor, Regular..."/>
+        </div>
+      </div>
+
+      <div class="row">
+        <button id="btnCargar">Cargar / Actualizar</button>
+        <button id="btnCSV">Exportar CSV</button>
+        <button id="btnExportPDF" title="Exportar la vista actual a PDF">Exportar PDF</button>
+
+        <label class="chip">
+          <input id="auto" type="checkbox" style="accent-color:#00a0df;margin-right:6px"/> Auto-refresh (10s)
+        </label>
+        <span id="estado" class="muted">Listo</span>
+      </div>
+    </section>
+
+    <!-- Contenido -->
+    <section class="grid">
+      <!-- KPIs + Gráficas principales -->
+      <div class="card">
+        <div class="kpis">
+          <div class="kpi">
+            <h3>Total respuestas</h3>
+            <div class="val" id="kpiTotal">0</div>
+            <div class="hint" id="kpiRango"></div>
+          </div>
+          <div class="kpi ok">
+            <h3>% Satisfechos (Exc+Bueno)</h3>
+            <div class="val" id="kpiSat">0%</div>
+          </div>
+          <div class="kpi bad">
+            <h3>% No satisfechos (Reg+Malo)</h3>
+            <div class="val" id="kpiNoSat">0%</div>
+          </div>
+          <div class="kpi">
+            <h3>Motivo más frecuente</h3>
+            <div class="val" id="kpiMotivo">—</div>
+          </div>
+        </div>
+
+        <div class="charts" style="margin-top:14px">
+          <div class="card">
+            <h3 class="card-title">Respuestas por calificación</h3>
+            <div class="chart-box"><canvas id="chartRatings"></canvas></div>
+          </div>
+          <div class="card">
+            <h3 class="card-title">Distribución por día (apilada)</h3>
+            <div class="chart-box"><canvas id="chartDaily"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+
+
+      <!-- Tendencia -->
+      <div class="card">
+        <h3 class="card-title">Tendencia por día</h3>
+        <div class="chart-box"><canvas id="tendenciaChart"></canvas></div>
+        <div class="muted" style="margin-top:8px">
+          La tendencia respeta los filtros de <strong>Tipo</strong> y <strong>Fecha (Desde / Hasta)</strong> al momento de cargar.
+        </div>
+      </div>
+
+      <!-- Comparativa + Top negativos -->
+      <div class="card">
+        <div class="charts">
+          <div>
+            <h3 class="card-title">Comparativa de satisfacción (Comedor vs Transporte)</h3>
+            <div class="chart-box"><canvas id="chartCompare"></canvas></div>
+          </div>
+          <div>
+            <h3 class="card-title">Top motivos negativos</h3>
+            <div class="chart-box"><canvas id="chartTopNeg"></canvas></div>
+            <div class="muted" style="margin-top:8px">Se consideran calificaciones <strong>Regular</strong> y <strong>Malo</strong>.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+
+        <!-- Tabla -->
+      <div class="card">
+        <h3 class="card-title">Últimas respuestas</h3>
+        <div class="tbl-tools">
+          <div class="muted">Mostrando <span id="lblRangoTabla">0–0</span> de <span id="lblTotalTabla">0</span></div>
+          <div class="pagination">
+            <button id="prev">« Prev</button>
+            <span class="muted" id="lblPagina">Página 1</span>
+            <button id="next">Next »</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table id="tabla">
+            <thead>
+              <tr>
+                <th>Fecha (UTC)</th>
+                <th>Calificación</th>
+                <th>Motivo</th>
+                <th>Dispositivo</th>
+                <th>Sede</th>
+                <th>Tipo</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+  <!-- Config -->
+  <script src="js/config.js"></script>
+  <!-- App principal (módulo) -->
+  <script type="module" src="js/reportes.js?v=6"></script>
+</body>
+</html>
