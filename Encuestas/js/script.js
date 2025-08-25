@@ -1,7 +1,8 @@
 // ===============================
 // Config
 // ===============================
-let API_URL   = "http://localhost:8000";
+//let API_URL   = "http://localhost:8000";
+let API_URL   = "https://encuestas-reportes.onrender.com";
 let DEVICE_ID = "tablet-comedor-01";
 let SEDE      = "Saltillo";
 const APP_TIPO  = "comedor";
