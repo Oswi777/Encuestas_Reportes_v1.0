@@ -297,6 +297,28 @@ def static_css(filename):
 def static_js(filename):
     return _multi_send([os.path.join(ENC_DIR, "js"), os.path.join(REP_DIR, "js")], filename)
 
+
+@app.route("/api/debug/dbinfo")
+def dbinfo():
+    info = {
+        "engine": "Postgres" if is_postgres() else "SQLite",
+        "has_DATABASE_URL": bool(os.getenv("DATABASE_URL")),
+        "render": bool(os.getenv("RENDER")),
+    }
+    # Si es SQLite, muestra la ruta del archivo
+    if not is_postgres():
+        env_db = os.getenv("SQLITE_PATH")
+        if env_db:
+            info["sqlite_path"] = env_db
+        elif os.getenv("RENDER") or os.getenv("KOYEB") or os.getenv("PORT"):
+            import tempfile, os as _os
+            info["sqlite_path"] = _os.path.join(tempfile.gettempdir(), "encuesta.db")
+        else:
+            import os as _os
+            info["sqlite_path"] = _os.path.join(_os.path.dirname(__file__), "encuesta.db")
+    return jsonify(info), 200
+
+
 # ---------- Boot ----------
 try:
     init_db()
