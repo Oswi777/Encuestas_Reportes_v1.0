@@ -1,0 +1,282 @@
+/* ====== Reset y base  ====== */
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+:root { color-scheme: light dark; }
+body {
+  margin: 0;
+  font-family: var(--brand-font, Montserrat, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif);
+  font-weight: var(--weight-medium, 500);
+  color: var(--brand-text, #fff);
+  min-height: 100dvh;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  overflow: hidden;
+}
+body::before{
+  content:"";
+  position: fixed; inset: 0;
+  background: url("../assets/Gradient-45anglec.jpg") center/cover no-repeat;
+  z-index: -1;
+  filter: saturate(1.05);
+}
+
+/* ====== Header ====== */
+.branding{
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: clamp(8px, 2vw, 20px);
+  padding: clamp(8px, 2vw, 18px) max(16px, env(safe-area-inset-left))
+           clamp(6px, 1.6vw, 12px) max(16px, env(safe-area-inset-right));
+  background: linear-gradient(to bottom, rgba(0,0,0,.35), rgba(0,0,0,0));
+}
+.logo{ height: clamp(44px, 7dvh, 68px); width: auto; object-fit: contain; }
+.titulo-encuesta {
+  margin: 0 0 20px 0;      /* espacio inferior hacia los botones */
+  font-size: clamp(20px, 2.6vw, 34px);
+  font-weight: var(--weight-bold, 700);
+  text-align: center;      /* centra el texto */
+  width: 100%;             /* asegura que ocupe todo el ancho del contenedor */
+  display: block;          /* fuerza a comportarse como bloque */
+}
+
+
+/* Botón auxiliar (pantalla completa / atrás) */
+.btn-aux{
+  appearance: none;
+  border: 0;
+  border-radius: 12px;
+  padding: 10px 14px;
+  font: inherit;
+  font-weight: var(--weight-bold, 700);
+  color: #fff;
+  background: rgba(12,20,35,.42);
+  box-shadow: 0 8px 22px rgba(0,0,0,.18);
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+}
+.btn-aux:hover{ background: rgba(12,20,35,.55); }
+.oculto{ display: none; }
+
+/* ====== Contenido ====== */
+/* Contenedor principal centrado */
+.encuesta-container {
+  height: calc(100dvh - clamp(44px, 7dvh, 68px) - 40px); /* resto de pantalla */
+  display: flex;
+  justify-content: center;   /* centro horizontal */
+  align-items: center;       /* centro vertical */
+  padding: clamp(8px, 2vw, 18px);
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Bloque que contiene pregunta y botones */
+.bloque-encuesta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(14px, 2vw, 24px);
+}
+
+/* Pregunta arriba de los botones + botón Atrás */
+.cabecera-pregunta{
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 12px;
+}
+/* Pregunta alineada con los botones */
+.pregunta {
+  margin: 0;
+  font-size: clamp(18px, 2.4vw, 28px);
+  font-weight: var(--weight-bold, 700);
+  text-align: center;
+  text-shadow: 0 1px 2px rgba(0,0,0,.35);
+}
+
+/* Botonera horizontal responsiva */
+/* Botonera centrada */
+.contenedor-botones {
+  width: 100%;
+  max-width: 1100px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: clamp(14px, 2vw, 24px);
+  justify-items: center; /* centra cada botón en su columna */
+}
+
+
+/* Botones */
+.boton-grande {
+  width: 100%;
+  max-width: 280px;
+  height: clamp(70px, 9dvh, 90px);
+  display: grid;
+  place-items: center;
+
+  border: none;
+  border-radius: var(--radius, 16px);
+  background: var(--surface, rgba(12,20,35,.35));
+  color: #fff;
+  font-size: clamp(18px, 2.2vw, 26px);
+  font-weight: var(--weight-bold, 700);
+  letter-spacing: .3px;
+
+  box-shadow: 0 10px 26px rgba(0,0,0,.20);
+  backdrop-filter: blur(5px);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform .12s ease, box-shadow .12s ease, background .12s ease, opacity .12s ease;
+}
+
+.boton-grande:hover,
+.boton-grande:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 36px rgba(0,0,0,.28);
+  outline: none;
+}
+
+.boton-grande:active {
+  transform: translateY(0);
+  opacity: .92;
+}
+.boton-grande:hover, .boton-grande:focus-visible{
+  transform: translateY(-2px);
+  box-shadow: 0 16px 36px rgba(0,0,0,.28);
+  outline: none;
+}
+.boton-grande:active{ transform: translateY(0); opacity: .92; }
+
+.boton-positivo{ background: var(--surface, rgba(12,20,35,.35)); }
+.boton-negativo{ background: rgba(255,107,0,.9); }
+
+/* Mensaje de agradecimiento */
+.mensaje-agradecimiento{
+  width: min(720px, 96%);
+  font-size: clamp(20px, 3vw, 34px);
+  text-align: center;
+  padding: clamp(16px, 3vw, 28px);
+  background: rgba(255,255,255,.14);
+  border-radius: var(--radius);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 16px 36px rgba(0,0,0,.28);
+}
+
+/* Footer */
+.pie{
+  height: 38px;
+  display: grid; place-items: center;
+  padding: 0 max(12px, env(safe-area-inset-left));
+  font-size: 12px;
+  color: rgba(255,255,255,.92);
+  background: linear-gradient(to top, rgba(0,0,0,.35), rgba(0,0,0,0));
+}
+
+/* Breakpoints */
+@media (max-width: 1024px){ .boton-grande{ flex-basis: clamp(240px, 31%, 320px); } }
+@media (max-width: 680px){
+  .logo{ height: clamp(40px, 6dvh, 56px); }
+  .boton-grande{ flex-basis: calc(50% - 12px); min-width: 160px; height: clamp(58px, 8.5dvh, 74px); }
+}
+@media (max-width: 360px){ .boton-grande{ flex-basis: 100%; min-width: 0; } }
+
+
+/* ====== Logos según requerimiento ====== */
+
+/* Ajuste de proporción del logo tipo bandera (GPTW) en el header */
+.logo-gptw{
+  height: clamp(44px, 7dvh, 68px);
+  width: auto;
+  object-fit: contain;
+}
+
+/* Logo BorgWarner fijo abajo a la derecha */
+.logo-borgwarner-fixed{
+  position: fixed;
+  right: max(12px, env(safe-area-inset-right));
+  bottom: max(12px, env(safe-area-inset-bottom));
+  height: clamp(40px, 8dvh, 72px);
+  width: auto;
+  object-fit: contain;
+  opacity: .95;
+  pointer-events: none; /* no estorba toques en tablet */
+  z-index: 10;
+}
+
+/* En móviles muy pequeños, reducimos un poco para no tapar UI */
+@media (max-width: 420px){
+  .logo-borgwarner-fixed{ height: 48px; }
+}
+
+
+
+/* ===== UX: ripple en botones ===== */
+.ux-ripple {
+  position: absolute;
+  border-radius: 50%;
+  transform: scale(0);
+  animation: ux-ripple 0.5s ease-out;
+  background: rgba(255,255,255,0.35);
+  pointer-events: none;
+}
+@keyframes ux-ripple {
+  to { transform: scale(2.6); opacity: 0; }
+}
+/* Asegura que los botones puedan contener ripple */
+button, .boton-grande, .btn-aux { position: relative; overflow: hidden; }
+
+/* ===== UX: chip de estado ===== */
+.ux-chip{
+  position: fixed;
+  left: max(10px, env(safe-area-inset-left));
+  bottom: max(10px, env(safe-area-inset-bottom));
+  z-index: 30;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  background: rgba(11, 23, 38, .75);
+  color: #eaf0f7;
+  border: 1px solid rgba(255,255,255,.14);
+  backdrop-filter: blur(4px);
+}
+.ux-chip[data-state="offline"]{
+  background: rgba(122, 16, 16, .8);
+}
+
+/* ===== UX: hot-corner para admin ===== */
+#ux-hotcorner{
+  position: fixed;
+  right: max(6px, env(safe-area-inset-right));
+  bottom: max(6px, env(safe-area-inset-bottom));
+  width: 36px; height: 36px;
+  z-index: 40;
+  /* invisible táctil */
+  background: transparent;
+}
+
+/* ===== UX: modal admin ===== */
+#ux-modal{ position: fixed; inset:0; display:none; z-index: 100; }
+#ux-modal.open{ display:block; }
+#ux-modal .ux-modal-backdrop{
+  position:absolute; inset:0; background: rgba(0,0,0,.45);
+}
+#ux-modal .ux-modal-card{
+  position: absolute; inset: 0;
+  margin: auto; width: min(520px, 92%); height: auto;
+  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 16px;
+  padding: 16px;
+  color: #eaf0f7;
+  box-shadow: 0 20px 60px rgba(0,0,0,.35);
+}
+#ux-modal h3{ margin: 0 0 10px; font-size: 18px; }
+#ux-modal .ux-form{ display:grid; gap:10px; }
+#ux-modal label{ font-size: 12px; color:#cfe3ff; display:grid; gap:4px; }
+#ux-modal input{
+  background:#0b1726; color:#eaf0f7; border:1px solid #22314a;
+  border-radius: 10px; padding: 10px 12px; outline: none;
+}
+#ux-modal .ux-actions{ display:flex; gap:10px; justify-content:flex-end; margin-top:10px; }
+#ux-modal .ux-msg{ margin-top:8px; min-height:18px; }
+

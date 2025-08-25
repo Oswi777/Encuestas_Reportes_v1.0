@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Encuesta Comedor · BorgWarner</title>
+
+  <link rel="stylesheet" href="css/estilos.css" />
+  <link rel="stylesheet" href="css/brand.css" />
+</head>
+<body>
+  <!-- Header: GPTW a la izquierda, título centrado, botón a la derecha -->
+  <header class="branding">
+    <!-- ⬇️ Reemplazamos por el logo tipo bandera GPTW -->
+    <img src="assets/gptw.png" alt="GPTW" class="logo logo-gptw" />
+
+    <h1 class="titulo-encuesta">¡Cuéntanos tu experiencia!</h1>
+
+    <button id="btnFullscreen" class="btn-aux">Pantalla completa</button>
+  </header>
+
+  <main class="encuesta-container">
+    <div class="bloque-encuesta">
+      <h2 id="pregunta" class="pregunta">¿Qué tal estuvo el servicio de comedor?</h2>
+      <div class="contenedor-botones" id="contenedor"></div>
+    </div>
+    <button id="btnBack" class="btn-aux oculto" aria-label="Volver">← Atrás</button>
+  </main>
+
+  <footer class="pie">Toque para seleccionar · Sin datos personales</footer>
+
+  <!-- ⬇️ Logo BorgWarner fijo abajo a la derecha -->
+  <img src="assets/BorgWarner_Logo_White.png" alt="BorgWarner" class="logo-borgwarner-fixed" />
+  
+   <script src="js/ux.js"></script> 
+  <script src="js/script.js"></script>
+</body>
+</html>

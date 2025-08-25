@@ -1,0 +1,43 @@
+/* ====== Fuentes locales (ya instaladas en la PC) ====== */
+@font-face {
+  font-family: "Montserrat";
+  src: local("Montserrat Medium"), local("Montserrat-Medium"), local("Montserrat");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Montserrat";
+  src: local("Montserrat Bold"), local("Montserrat-Bold"), local("Montserrat");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root{
+  /* Tipografía corporativa */
+  --brand-font: "Montserrat", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --weight-medium: 500;
+  --weight-bold: 700;
+
+  /* Colores  */
+  --brand-primary: #204080;       /* Azul principal */
+  --brand-primary-600: #1b376f;   /* Hover */
+  --brand-accent: #00A0DF;
+  --brand-text: #ffffff;
+  --surface: rgba(12, 20, 35, 0.35);   /* tarjetas sobre el fondo */
+  --surface-strong: rgba(12, 20, 35, 0.5);
+  --ring: rgba(0,160,223,.8);
+
+  /* Espaciado & radios */
+  --radius: 16px;
+  --elev-1: 0 10px 26px rgba(0,0,0,.20);
+  --elev-2: 0 16px 36px rgba(0,0,0,.28);
+}
+
+/* Botones */
+.boton-positivo{ background: var(--surface); }
+.boton-positivo:hover{ background: var(--surface-strong); }
+
+.boton-negativo{ background: var(--surface); }
+.boton-negativo:hover{ background: var(--surface); }
