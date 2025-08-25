@@ -1,20 +1,42 @@
+import os
+import json
+import sqlite3
+import tempfile
+from datetime import datetime
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import sqlite3, json
-from datetime import datetime
 
-DB = "encuesta.db"
+# ---------- DB path ----------
+def resolve_db_path():
+    # Si defines SQLITE_PATH en variables de entorno, se respeta.
+    env_db = os.getenv("SQLITE_PATH")
+    if env_db:
+        return env_db
 
+    # En plataformas tipo Render/Koyeb el FS del contenedor es efímero;
+    # guardamos el .db en /tmp para evitar problemas de permisos.
+    if os.getenv("RENDER") or os.getenv("KOYEB") or os.getenv("PORT"):
+        return os.path.join(tempfile.gettempdir(), "encuesta.db")
+
+    # En local, junto al app.py
+    return os.path.join(os.path.dirname(__file__), "encuesta.db")
+
+DB = resolve_db_path()
 ALLOWED_TIPOS = {"comedor", "transporte"}
 
 app = Flask(__name__)
-# Mientras pruebas dejar abierto; en prod limitar orígenes
+# Durante pruebas dejar abierto; en prod limita orígenes
 CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 # ---------- DB helpers ----------
 def get_db():
     con = sqlite3.connect(DB, check_same_thread=False)
     con.row_factory = sqlite3.Row
+    try:
+        con.execute("PRAGMA journal_mode=WAL;")
+        con.execute("PRAGMA synchronous=NORMAL;")
+    except Exception:
+        pass
     return con
 
 def table_has_column(con, table, column):
@@ -31,10 +53,11 @@ def init_db():
             dispositivo_id TEXT,
             calificacion TEXT NOT NULL,
             motivo TEXT NOT NULL,
-            meta TEXT
+            meta TEXT,
+            tipo TEXT
         )
     """)
-    # Migración: columna 'tipo'
+    # Si la columna 'tipo' no existiera (por si vienes de una versión vieja)
     if not table_has_column(con, "respuestas", "tipo"):
         con.execute("ALTER TABLE respuestas ADD COLUMN tipo TEXT")
         con.execute("""
@@ -48,14 +71,17 @@ def init_db():
         """)
         con.commit()
 
-    # Índices
     con.execute("CREATE INDEX IF NOT EXISTS idx_respuestas_created_at ON respuestas(created_at)")
     con.execute("CREATE INDEX IF NOT EXISTS idx_respuestas_tipo       ON respuestas(tipo)")
     con.execute("CREATE INDEX IF NOT EXISTS idx_respuestas_calif      ON respuestas(calificacion)")
     con.commit()
     con.close()
 
-# ---------- Utils ----------
+# ---------- Endpoints utilitarios ----------
+@app.route("/", methods=["GET"])
+def root():
+    return jsonify({"status": "ok", "service": "Encuestas_Reportes_v1.0"}), 200
+
 @app.route("/api/health", methods=["GET"])
 def health():
     return {"status": "ok"}
@@ -128,8 +154,7 @@ def listar_respuestas():
         sql += " AND tipo = ?"
         args.append(tipo)
 
-    # created_at está en ISO "YYYY-MM-DDTHH:MM:SSZ"
-    # comparamos por fecha truncada: substr(created_at,1,10)
+    # created_at en ISO "YYYY-MM-DDTHH:MM:SSZ" -> filtrar por fecha: substr(created_at,1,10)
     if desde:
         sql += " AND substr(created_at,1,10) >= ?"
         args.append(desde)
@@ -144,7 +169,6 @@ def listar_respuestas():
     items = [dict(row) for row in cur.fetchall()]
     con.close()
     return jsonify(items)
-
 
 @app.route("/api/resumen", methods=["GET"])
 def resumen():
@@ -173,13 +197,20 @@ def resumen():
 
     sql += " GROUP BY dia, tipo, calificacion ORDER BY dia"
 
-    with sqlite3.connect(DB) as con:
-        con.row_factory = sqlite3.Row
-        cur = con.execute(sql, args)
-        rows = [dict(r) for r in cur.fetchall()]
+    con = get_db()
+    cur = con.execute(sql, args)
+    rows = [dict(r) for r in cur.fetchall()]
+    con.close()
 
     return jsonify(rows)
 
-if __name__ == "__main__":
+# --- Inicialización segura de la DB (compatible con Flask 3.x) ---
+try:
     init_db()
-    app.run(host="0.0.0.0", port=8000, debug=True)
+except Exception as e:
+    print("Warning: init_db failed:", e)
+
+if __name__ == "__main__":
+    # En local lee PORT si existe (útil para compatibilidad), por defecto 8000
+    port = int(os.environ.get("PORT", 8000))
+    app.run(host="0.0.0.0", port=port, debug=True)
