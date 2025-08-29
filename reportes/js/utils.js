@@ -1,7 +1,6 @@
 // PR/reportes/js/utils.js
 export const TIME_ZONE = "America/Mexico_City";
 
-
 export function fmt(n) {
   return (n ?? 0).toLocaleString("es-MX");
 }
@@ -15,15 +14,17 @@ export function getInputValues() {
     turno: document.querySelector("#fTurno") ? document.querySelector("#fTurno").value.trim() : "",
     sede: (document.querySelector("#fSede")?.value || "").trim().toLowerCase(),
     disp: (document.querySelector("#fDispositivo")?.value || "").trim().toLowerCase(),
-    texto: (document.querySelector("#fTexto")?.value || "").trim().toLowerCase()
+    texto: (document.querySelector("#fTexto")?.value || "").trim().toLowerCase(),
+    // ⬇️ NUEVOS
+    empleado: (document.querySelector("#fEmpleado")?.value || "").trim().toLowerCase(),
+    metaTexto: (document.querySelector("#fMeta")?.value || "").trim().toLowerCase(),
   };
 }
 
-/** Muestra un ISO (UTC) como fecha/hora LOCAL America/Chicago */
+/** Muestra un ISO (UTC) como fecha/hora LOCAL */
 export function formatLocal(isoUtc) {
   if (!isoUtc) return "";
   const d = new Date(isoUtc); // UTC parse
-  // Ej: 18/08/2025 12:19 p. m.
   return d.toLocaleString("es-MX", {
     timeZone: TIME_ZONE,
     year: "numeric", month: "2-digit", day: "2-digit",
@@ -67,18 +68,34 @@ function normalizeTipo(v){
 }
 
 export function downloadCSV(rows) {
-  const headers = ["created_at","calificacion","motivo","dispositivo_id","sede","tipo"];
+  const headers = [
+    "created_at","calificacion","motivo","dispositivo_id","sede","tipo",
+    // ⬇️ NUEVOS
+    "meta_empleado","meta_comentario"
+  ];
   const lines = [headers.join(",")];
   for (const r of rows){
     const tipo = inferTipo(r) || "";
     const createdLocal = formatLocal(r.created_at).replace(/,/g,""); // legible en Excel
+
+    // parse meta (string o objeto)
+    let meta = {};
+    try {
+      meta = typeof r.meta === "string" ? JSON.parse(r.meta||"{}") : (r.meta || {});
+    } catch { meta = {}; }
+
+    const emp = meta?.otro?.empleado ?? "";
+    const com = meta?.otro?.comentario ?? "";
+
     const row = [
       `"${createdLocal.replace(/"/g,'""')}"`,
       `"${(r.calificacion ?? "").toString().replace(/"/g,'""')}"`,
       `"${(r.motivo ?? "").toString().replace(/"/g,'""')}"`,
       `"${(r.dispositivo_id ?? "").toString().replace(/"/g,'""')}"`,
       `"${(r.sede ?? "").toString().replace(/"/g,'""')}"`,
-      `"${tipo.toString().replace(/"/g,'""')}"`
+      `"${tipo.toString().replace(/"/g,'""')}"`,
+      `"${emp.toString().replace(/"/g,'""')}"`,
+      `"${com.toString().replace(/"/g,'""')}"`,
     ].join(",");
     lines.push(row);
   }
@@ -132,4 +149,3 @@ export function isDateInShiftLocal(d, def) {
   if (!(d instanceof Date) || isNaN(d)) return false;
   return isMinuteInShift(dateToMinutesLocal(d), def);
 }
-

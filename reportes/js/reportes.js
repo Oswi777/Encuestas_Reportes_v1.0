@@ -15,6 +15,10 @@ const fTurno = document.getElementById("fTurno");
 const fSede = document.getElementById("fSede");
 const fDisp = document.getElementById("fDispositivo");
 const fTexto = document.getElementById("fTexto");
+// NUEVO:
+const fEmpleado = document.getElementById("fEmpleado");
+const fMeta = document.getElementById("fMeta");
+
 const btnCargar = document.getElementById("btnCargar");
 const btnCSV = document.getElementById("btnCSV");
 const btnExportPDF = document.getElementById("btnExportPDF");
@@ -49,6 +53,9 @@ function restoreFilters(){
   if (fSede && saved.sede) fSede.value = saved.sede;
   if (fDisp && saved.disp) fDisp.value = saved.disp;
   if (fTexto && saved.texto) fTexto.value = saved.texto;
+  // NUEVO:
+  if (fEmpleado && saved.empleado) fEmpleado.value = saved.empleado;
+  if (fMeta && saved.metaTexto) fMeta.value = saved.metaTexto;
 
   if (!desde.value || !hasta.value){
     const today = new Date();
@@ -95,9 +102,14 @@ async function fetchData(){
 
 // ==== filtros + render ====
 
+function safeMeta(r){
+  try{
+    return typeof r.meta === "string" ? JSON.parse(r.meta||"{}") : (r.meta || {});
+  }catch{return {};}
+}
 
 function applyFilters(){
-  const { tipo, desde: dStr, hasta: hStr, turno, sede, disp, texto } = getInputValues();
+  const { tipo, desde: dStr, hasta: hStr, turno, sede, disp, texto, empleado, metaTexto } = getInputValues();
 
   const d0 = localDayStart(dStr);
   const d1 = localDayEnd(hStr);
@@ -107,13 +119,12 @@ function applyFilters(){
     if (d0 && t < d0) return false;
     if (d1 && t > d1) return false;
     if (turno) {
-  const def = SHIFT_DEFS[turno];
-  if (def) {
-    if (!isDateInShiftLocal(t, def)) return false;
-  }
-  // si no hay definición (turno=""), no se filtra.
-}
-
+      const def = SHIFT_DEFS[turno];
+      if (def) {
+        if (!isDateInShiftLocal(t, def)) return false;
+      }
+      // si no hay definición (turno=""), no se filtra.
+    }
 
     if (tipo){
       const rt = inferTipo(r);
@@ -122,10 +133,20 @@ function applyFilters(){
     if (sede && (r.sede||"").toLowerCase().indexOf(sede) === -1) return false;
     if (disp && (r.dispositivo_id||"").toLowerCase().indexOf(disp) === -1) return false;
 
+    const meta = safeMeta(r);
+    const empVal = String(meta?.otro?.empleado ?? "").toLowerCase();
+    const comVal = String(meta?.otro?.comentario ?? "").toLowerCase();
+
+    // Filtro general de texto (ahora incluye comentario)
     if (texto){
-      const blob = `${r.calificacion||""} ${r.motivo||""}`.toLowerCase();
+      const blob = `${r.calificacion||""} ${r.motivo||""} ${empVal} ${comVal}`.toLowerCase();
       if (blob.indexOf(texto) === -1) return false;
     }
+
+    // Filtros NUEVOS
+    if (empleado && empVal.indexOf(empleado) === -1) return false;
+    if (metaTexto && comVal.indexOf(metaTexto) === -1) return false;
+
     return true;
   });
 
@@ -140,7 +161,7 @@ function renderAll(){
   const c2 = Chart.getChart("chartDaily");   if (c2) c2.destroy();
   renderCharts(dataFiltered);
 
-  // ⬇️ Tendencia por día LOCAL (arregla que no graficaba)
+  // ⬇️ Tendencia por día LOCAL
   const ct = Chart.getChart("tendenciaChart"); if (ct) ct.destroy();
   renderTrendDailyLocal(dataFiltered, TIME_ZONE);
 
@@ -191,6 +212,9 @@ function renderTable(){
 
   tbody.innerHTML = dataFiltered.slice(start, end).map(r => {
     const tipo = inferTipo(r);
+    const meta = safeMeta(r);
+    const emp = meta?.otro?.empleado ?? "";
+    const com = meta?.otro?.comentario ?? "";
     return `
       <tr>
         <td>${formatLocal(r.created_at)}</td>
@@ -199,6 +223,8 @@ function renderTable(){
         <td>${r.dispositivo_id || "-"}</td>
         <td>${r.sede || "-"}</td>
         <td>${tipo === "desconocido" ? "—" : tipo}</td>
+        <td>${emp || "-"}</td>
+        <td>${com ? com.replace(/</g,"&lt;") : "-"}</td>
       </tr>
     `;
   }).join("");
@@ -213,10 +239,13 @@ btnCSV.addEventListener("click", () => downloadCSV(dataFiltered));
 btnExportPDF?.addEventListener("click", () => {
   // (tu exportación PDF si la tienes implementada)
 });
-[apiInput, fTipo, desde, hasta, fTurno, fSede, fDisp, fTexto].forEach(el => {
+
+[apiInput, fTipo, desde, hasta, fTurno, fSede, fDisp, fTexto, fEmpleado, fMeta].forEach(el => {
   el?.addEventListener("change", () => { persistFilters(); applyFilters(); });
 });
 fTexto?.addEventListener("keyup", () => { persistFilters(); applyFilters(); });
+fEmpleado?.addEventListener("keyup", () => { persistFilters(); applyFilters(); });
+fMeta?.addEventListener("keyup", () => { persistFilters(); applyFilters(); });
 
 btnPrev.addEventListener("click", ()=>{ page=Math.max(1,page-1); renderTable(); });
 btnNext.addEventListener("click", ()=>{ page=page+1; renderTable(); });

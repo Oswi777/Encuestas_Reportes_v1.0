@@ -280,3 +280,56 @@ button, .boton-grande, .btn-aux { position: relative; overflow: hidden; }
 #ux-modal .ux-actions{ display:flex; gap:10px; justify-content:flex-end; margin-top:10px; }
 #ux-modal .ux-msg{ margin-top:8px; min-height:18px; }
 
+
+/* ====== Sección de seguimiento (Otro) ====== */
+.followup-card{
+  width: min(780px, 96%);
+  background: rgba(255,255,255,.14);
+  border-radius: var(--radius, 16px);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 16px 36px rgba(0,0,0,.28);
+  padding: clamp(16px, 3vw, 24px);
+  display: grid;
+  gap: 12px;
+}
+.followup-card h3{
+  margin: 0 0 6px;
+  font-weight: var(--weight-bold, 700);
+  text-align: center;
+}
+.followup-grid{
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 12px;
+}
+.followup-grid .inp{
+  display: grid; gap: 6px;
+}
+.followup-grid label{ font-size: 13px; opacity: .9; }
+.followup-grid input, .followup-grid textarea{
+  width: 100%;
+  background: rgba(12,20,35,.42);
+  border: 1px solid rgba(255,255,255,.18);
+  color: #fff;
+  border-radius: 12px;
+  min-height: 44px;
+  padding: 10px 12px;
+  outline: none;
+}
+.followup-grid textarea{ min-height: 100px; resize: vertical; }
+
+.followup-actions{
+  display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 6px;
+}
+.btn-primary{ background: var(--brand-primary, #204080); }
+.btn-primary:hover{ background: var(--brand-primary-600, #1b376f); }
+.btn-ghost{
+  background: rgba(12,20,35,.42);
+  border: 1px solid rgba(255,255,255,.18);
+}
+
+/* Responsive */
+@media (max-width: 680px){
+  .followup-grid{ grid-template-columns: 1fr; }
+}
+

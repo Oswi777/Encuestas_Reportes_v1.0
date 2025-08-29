@@ -48,6 +48,49 @@ function setInteraction(on){ if (contenedor) contenedor.style.pointerEvents = on
 function setPreguntaPrincipal(){ preguntaEl && (preguntaEl.textContent="¿Qué tal estuvo el servicio de transporte?"); btnBack && btnBack.classList.add("oculto"); }
 function setPreguntaSecundaria(){ preguntaEl && (preguntaEl.textContent=`¿Por qué calificaste “${seleccionPrincipal}”?`); btnBack && btnBack.classList.remove("oculto"); }
 
+// ===== Formulario “Otro” =====
+function openOtroDialog(onSubmit){
+  const wrap = document.createElement("div");
+  wrap.style.position="fixed"; wrap.style.inset="0"; wrap.style.zIndex="200";
+  wrap.innerHTML = `
+    <div style="position:absolute;inset:0;background:rgba(0,0,0,.45)"></div>
+    <div role="dialog" aria-modal="true"
+         style="position:absolute;inset:0;margin:auto;width:min(520px,92%);background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02));
+         border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:16px;color:#eaf0f7;box-shadow:0 20px 60px rgba(0,0,0,.35);">
+      <h3 style="margin:0 0 10px;font-size:18px">Cuéntanos más</h3>
+      <div style="display:grid;gap:10px">
+        <label style="font-size:12px;color:#cfe3ff;display:grid;gap:4px">
+          Número de empleado (requerido)
+          <input id="otro-emp" inputmode="numeric" pattern="[0-9]*"
+                 style="background:#0b1726;color:#eaf0f7;border:1px solid #22314a;border-radius:10px;padding:10px 12px;outline:none" />
+        </label>
+        <label style="font-size:12px;color:#cfe3ff;display:grid;gap:4px">
+          Comentario (requerido)
+          <input id="otro-com" maxlength="200"
+                 style="background:#0b1726;color:#eaf0f7;border:1px solid #22314a;border-radius:10px;padding:10px 12px;outline:none" />
+        </label>
+      </div>
+      <div id="otro-msg" style="margin-top:8px;min-height:18px;color:#ffdca8;font-size:12px"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:12px">
+        <button id="otro-cancel" class="btn-aux">Cancelar</button>
+        <button id="otro-ok" class="btn-aux">Guardar</button>
+      </div>
+    </div>`;
+  document.body.appendChild(wrap);
+  function close(){ wrap.remove(); }
+  wrap.querySelector("#otro-cancel").onclick = close;
+  wrap.querySelector("div").onclick = (e)=>{ if (e.target===e.currentTarget) close(); };
+  wrap.querySelector("#otro-ok").onclick = ()=>{
+    const emp = wrap.querySelector("#otro-emp").value.trim();
+    const com = wrap.querySelector("#otro-com").value.trim();
+    const msg = wrap.querySelector("#otro-msg");
+    if (!emp || !/^[0-9]+$/.test(emp)){ msg.textContent="Ingresa un número de empleado válido."; return; }
+    if (!com || com.length<3){ msg.textContent="Escribe un comentario (mín. 3 caracteres)."; return; }
+    onSubmit({ empleado: emp, comentario: com });
+    close();
+  };
+}
+
 // ===============================
 function forceHome(){
   state = STATE.HOME;
@@ -86,27 +129,40 @@ function showSecondary(tipo){
       if (clickLock) return;
       if (!guardFast()) return;
       lockClicks(); cancelScheduledReset();
-      showThankYou(opcion);
+
+      if (opcion === "Otro"){
+        openOtroDialog((extra)=>{ showThankYou(opcion, extra); });
+      }else{
+        showThankYou(opcion, null);
+      }
     };
     contenedor.appendChild(btn);
   });
 }
 
-function showThankYou(motivo){
+function showThankYou(motivo, extraMeta){
   state=STATE.THANKYOU;
   setInteraction(false);
-  enviarRespuesta(seleccionPrincipal, motivo);
+  enviarRespuesta(seleccionPrincipal, motivo, extraMeta);
   contenedor.innerHTML=`
     <div class="mensaje-agradecimiento">
-      ¡Gracias por tu opinión!<br/><small>${seleccionPrincipal} · ${motivo}</small>
+      ¡Gracias por tu opinión!<br/><small>${seleccionPrincipal} · ${motivo}${extraMeta? " · #" + extraMeta.empleado : ""}</small>
     </div>`;
   scheduleReset(1500);
 }
 
 // ===============================
-async function enviarRespuesta(principal, motivo){
-  const payload = { sede:SEDE, dispositivo_id:DEVICE_ID, tipo:APP_TIPO, calificacion:principal, motivo,
-    meta:{ ua:navigator.userAgent, screen:`${screen.width}x${screen.height}`, ts:new Date().toISOString() } };
+async function enviarRespuesta(principal, motivo, extraMeta){
+  const payload = {
+    sede:SEDE, dispositivo_id:DEVICE_ID, tipo:APP_TIPO,
+    calificacion:principal, motivo,
+    meta:{
+      ua:navigator.userAgent,
+      screen:`${screen.width}x${screen.height}`,
+      ts:new Date().toISOString(),
+      ...(extraMeta ? { otro: { empleado: String(extraMeta.empleado||"").trim(), comentario: String(extraMeta.comentario||"").trim() } } : {})
+    }
+  };
   try{
     const r = await fetch(`${API_URL}/api/respuestas`, { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(payload) });
     if (!r.ok) throw 0;
