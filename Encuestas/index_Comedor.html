@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -7,7 +8,14 @@
 
   <link rel="stylesheet" href="css/estilos.css" />
   <link rel="stylesheet" href="css/brand.css" />
+  <!-- PWA / Standalone en iOS -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="assets/icon-180.png">
+  <link rel="manifest" href="assets/manifest.webmanifest">
+
 </head>
+
 <body>
   <!-- Header: GPTW a la izquierda, título centrado, botón a la derecha -->
   <header class="branding">
@@ -31,8 +39,9 @@
 
   <!-- ⬇️ Logo BorgWarner fijo abajo a la derecha -->
   <img src="assets/BorgWarner_Logo_White.png" alt="BorgWarner" class="logo-borgwarner-fixed" />
-  
-   <script src="js/ux.js"></script> 
+
+  <script src="js/ux.js"></script>
   <script src="js/script.js"></script>
 </body>
+
 </html>

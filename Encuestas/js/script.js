@@ -49,47 +49,111 @@ function setPreguntaPrincipal(){ preguntaEl && (preguntaEl.textContent="¿Qué t
 function setPreguntaSecundaria(){ preguntaEl && (preguntaEl.textContent=`¿Por qué calificaste “${seleccionPrincipal}”?`); btnBack && btnBack.classList.remove("oculto"); }
 
 // ===== Formulario “Otro” =====
+// ===== Formulario “Otro” con soporte Enter (iPad/iOS) =====
 function openOtroDialog(onSubmit){
   const wrap = document.createElement("div");
   wrap.style.position="fixed"; wrap.style.inset="0"; wrap.style.zIndex="200";
   wrap.innerHTML = `
-    <div style="position:absolute;inset:0;background:rgba(0,0,0,.45)"></div>
+    <div class="ux-modal-backdrop" style="position:absolute;inset:0;background:rgba(0,0,0,.45)"></div>
     <div role="dialog" aria-modal="true"
-         style="position:absolute;inset:0;margin:auto;width:min(520px,92%);background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02));
-         border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:16px;color:#eaf0f7;box-shadow:0 20px 60px rgba(0,0,0,.35);">
+         style="position:absolute;inset:0;margin:auto;width:min(520px,92%);
+                background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02));
+                border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:16px;color:#eaf0f7;
+                box-shadow:0 20px 60px rgba(0,0,0,.35);max-height:calc(100dvh - 20px);overflow:auto;">
       <h3 style="margin:0 0 10px;font-size:18px">Cuéntanos más</h3>
-      <div style="display:grid;gap:10px">
+
+      <form id="otro-form" autocomplete="off" novalidate style="display:grid;gap:10px">
         <label style="font-size:12px;color:#cfe3ff;display:grid;gap:4px">
           Número de empleado (requerido)
-          <input id="otro-emp" inputmode="numeric" pattern="[0-9]*"
-                 style="background:#0b1726;color:#eaf0f7;border:1px solid #22314a;border-radius:10px;padding:10px 12px;outline:none" />
+          <input id="otro-emp" type="tel" inputmode="numeric" pattern="[0-9]*"
+                 enterkeyhint="next" autocapitalize="off" autocorrect="off" spellcheck="false"
+                 style="background:#0b1726;color:#eaf0f7;border:1px solid #22314a;border-radius:10px;padding:10px 12px;outline:none;font-size:16px" />
         </label>
+
         <label style="font-size:12px;color:#cfe3ff;display:grid;gap:4px">
           Comentario (requerido)
           <input id="otro-com" maxlength="200"
-                 style="background:#0b1726;color:#eaf0f7;border:1px solid #22314a;border-radius:10px;padding:10px 12px;outline:none" />
+                 enterkeyhint="done" autocapitalize="off" autocorrect="off" spellcheck="false"
+                 style="background:#0b1726;color:#eaf0f7;border:1px solid #22314a;border-radius:10px;padding:10px 12px;outline:none;font-size:16px" />
         </label>
-      </div>
-      <div id="otro-msg" style="margin-top:8px;min-height:18px;color:#ffdca8;font-size:12px"></div>
-      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:12px">
-        <button id="otro-cancel" class="btn-aux">Cancelar</button>
-        <button id="otro-ok" class="btn-aux">Guardar</button>
-      </div>
+
+        <div id="otro-msg" style="min-height:18px;color:#ffdca8;font-size:12px"></div>
+
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px">
+          <button type="button" id="otro-cancel" class="btn-aux">Cancelar</button>
+          <button type="submit" id="otro-ok" class="btn-aux">Guardar</button>
+        </div>
+      </form>
     </div>`;
+
   document.body.appendChild(wrap);
+
+  const form = wrap.querySelector("#otro-form");
+  const emp  = wrap.querySelector("#otro-emp");
+  const com  = wrap.querySelector("#otro-com");
+  const msg  = wrap.querySelector("#otro-msg");
+  const btnCancel = wrap.querySelector("#otro-cancel");
+
   function close(){ wrap.remove(); }
-  wrap.querySelector("#otro-cancel").onclick = close;
-  wrap.querySelector("div").onclick = (e)=>{ if (e.target===e.currentTarget) close(); };
-  wrap.querySelector("#otro-ok").onclick = ()=>{
-    const emp = wrap.querySelector("#otro-emp").value.trim();
-    const com = wrap.querySelector("#otro-com").value.trim();
-    const msg = wrap.querySelector("#otro-msg");
-    if (!emp || !/^[0-9]+$/.test(emp)){ msg.textContent="Ingresa un número de empleado válido."; return; }
-    if (!com || com.length<3){ msg.textContent="Escribe un comentario (mín. 3 caracteres)."; return; }
-    onSubmit({ empleado: emp, comentario: com });
+
+  // ⚠️ No cerrar por tocar el fondo para evitar cierres accidentales en iPad
+  // (si quisieras permitirlo, descomenta lo siguiente):
+  // wrap.querySelector(".ux-modal-backdrop").onclick = (e)=>{ if (e.target===e.currentTarget) close(); };
+
+  btnCancel.onclick = close;
+
+  // Foco inicial y “scroll a la vista” para evitar que el teclado tape el campo
+  setTimeout(()=>{
+    emp.focus({ preventScroll:false });
+    emp.scrollIntoView({ block:"center", behavior:"smooth" });
+  }, 50);
+
+  // Enter en EMPLEADO -> pasa a COMENTARIO (si válido)
+  emp.addEventListener("keydown", (ev)=>{
+    if (ev.key === "Enter"){
+      ev.preventDefault();
+      if (!emp.value.trim() || !/^[0-9]+$/.test(emp.value.trim())){
+        msg.textContent = "Ingresa un número de empleado válido.";
+        emp.focus();
+        return;
+      }
+      com.focus({ preventScroll:false });
+      com.scrollIntoView({ block:"center", behavior:"smooth" });
+    }
+  });
+
+  // Enter en COMENTARIO -> submit form
+  com.addEventListener("keydown", (ev)=>{
+    if (ev.key === "Enter"){
+      ev.preventDefault();
+      form.requestSubmit?.(); // iOS 15+ soporta requestSubmit
+      // fallback:
+      if (!form.requestSubmit) form.dispatchEvent(new Event("submit", {cancelable:true, bubbles:true}));
+    }
+  });
+
+  // Submit (click Guardar o Enter en comentario)
+  form.addEventListener("submit", (e)=>{
+    e.preventDefault();
+    const empVal = emp.value.trim();
+    const comVal = com.value.trim();
+
+    if (!empVal || !/^[0-9]+$/.test(empVal)){
+      msg.textContent = "Ingresa un número de empleado válido.";
+      emp.focus();
+      return;
+    }
+    if (!comVal || comVal.length < 3){
+      msg.textContent = "Escribe un comentario (mín. 3 caracteres).";
+      com.focus();
+      return;
+    }
+
+    onSubmit({ empleado: empVal, comentario: comVal });
     close();
-  };
+  });
 }
+
 
 // ===============================
 function forceHome(){
