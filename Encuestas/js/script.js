@@ -51,12 +51,13 @@ function setPreguntaSecundaria(){ preguntaEl && (preguntaEl.textContent=`¿Por q
 // ===== Formulario “Otro” =====
 // ===== Formulario “Otro” con soporte Enter (iPad/iOS) =====
 // ===== Formulario “Otro” con soporte Enter (iPad + Android) =====
+// ===== Formulario “Otro” con soporte Enter (iPad + Android + IME raros) =====
 function openOtroDialog(onSubmit){
   const wrap = document.createElement("div");
   wrap.style.position="fixed"; wrap.style.inset="0"; wrap.style.zIndex="200";
   wrap.innerHTML = `
     <div class="ux-modal-backdrop" style="position:absolute;inset:0;background:rgba(0,0,0,.45)"></div>
-    <div role="dialog" aria-modal="true"
+    <div id="otro-card" role="dialog" aria-modal="true"
          style="position:absolute;inset:0;margin:auto;width:min(520px,92%);
                 background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02));
                 border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:16px;color:#eaf0f7;
@@ -66,14 +67,14 @@ function openOtroDialog(onSubmit){
       <form id="otro-form" autocomplete="off" novalidate style="display:grid;gap:10px">
         <label style="font-size:12px;color:#cfe3ff;display:grid;gap:4px">
           Número de empleado (requerido)
-          <input id="otro-emp" type="tel" inputmode="numeric" pattern="[0-9]*"
+          <input id="otro-emp" name="empleado" type="tel" inputmode="numeric" pattern="[0-9]*"
                  enterkeyhint="next" autocapitalize="off" autocorrect="off" spellcheck="false"
                  style="background:#0b1726;color:#eaf0f7;border:1px solid #22314a;border-radius:10px;padding:10px 12px;outline:none;font-size:16px" />
         </label>
 
         <label style="font-size:12px;color:#cfe3ff;display:grid;gap:4px">
           Comentario (requerido)
-          <input id="otro-com" maxlength="200"
+          <input id="otro-com" name="comentario" maxlength="200"
                  enterkeyhint="send" autocapitalize="off" autocorrect="off" spellcheck="false"
                  style="background:#0b1726;color:#eaf0f7;border:1px solid #22314a;border-radius:10px;padding:10px 12px;outline:none;font-size:16px" />
         </label>
@@ -94,54 +95,69 @@ function openOtroDialog(onSubmit){
   const com  = wrap.querySelector("#otro-com");
   const msg  = wrap.querySelector("#otro-msg");
   const btnCancel = wrap.querySelector("#otro-cancel");
+  const card = wrap.querySelector("#otro-card");
 
-  function close(){ wrap.remove(); }
-
-  // No cerramos por tocar el fondo para evitar perder el formulario
+  // No cerrar por tocar el fondo (evita cierres accidentales)
   btnCancel.onclick = close;
 
-  // Foco inicial (Android/iOS)
+  // Foco inicial y centrado
   setTimeout(()=>{
     emp.focus({ preventScroll:false });
     emp.scrollIntoView({ block:"center", behavior:"smooth" });
   }, 50);
 
-  // Utilidad: detectar tecla Enter en distintos navegadores/teclados
-  function isEnter(ev){
-    return ev.key === "Enter" || ev.keyCode === 13;
+  // Mantener la tarjeta visible cuando aparece el teclado (Android/iOS)
+  const vv = window.visualViewport;
+  const keepInView = ()=> card?.scrollIntoView({ block:"center" });
+  vv?.addEventListener("resize", keepInView);
+  vv?.addEventListener("scroll", keepInView);
+
+  function cleanupViewport(){
+    vv?.removeEventListener("resize", keepInView);
+    vv?.removeEventListener("scroll", keepInView);
   }
 
-  // Enter en EMPLEADO -> pasa a COMENTARIO si válido
-  const goToComment = ()=>{
+  function close(){ cleanupViewport(); wrap.remove(); }
+
+  // Helpers
+  const isEnter = (ev)=> ev.key === "Enter" || ev.keyCode === 13;
+  const validEmp = (v)=> /^[0-9]+$/.test(v.trim());
+
+  // Enter en EMPLEADO -> COMENTARIO (si válido)
+  function goToComment(){
     const v = emp.value.trim();
-    if (!v || !/^[0-9]+$/.test(v)){
+    if (!v || !validEmp(v)){
       msg.textContent = "Ingresa un número de empleado válido.";
       emp.focus();
       return;
     }
     com.focus({ preventScroll:false });
     com.scrollIntoView({ block:"center", behavior:"smooth" });
-  };
+    msg.textContent = "";
+  }
   emp.addEventListener("keydown", (ev)=>{ if (isEnter(ev)) { ev.preventDefault(); goToComment(); } });
-  // Fallback para teclados que solo disparan keyup
   emp.addEventListener("keyup",   (ev)=>{ if (isEnter(ev)) { ev.preventDefault(); } });
 
+  // Algunos teclados en Android no emiten keydown/keyup en la acción → capturamos blur
+  emp.addEventListener("blur", ()=>{
+    if (document.activeElement === com) return; // ya cambió solo
+  });
+
   // Enter en COMENTARIO -> submit
-  const trySubmit = ()=>{
-    // Dispara submit estándar (compatible iOS/Android)
+  function trySubmit(){
     if (form.requestSubmit) form.requestSubmit();
     else form.dispatchEvent(new Event("submit", {cancelable:true, bubbles:true}));
-  };
+  }
   com.addEventListener("keydown", (ev)=>{ if (isEnter(ev)) { ev.preventDefault(); trySubmit(); } });
   com.addEventListener("keyup",   (ev)=>{ if (isEnter(ev)) { ev.preventDefault(); } });
 
-  // Submit (click Guardar o Enter en comentario)
+  // Fallback: si el teclado ejecuta "Enviar" sin key events, el navegador dispara submit
   form.addEventListener("submit", (e)=>{
     e.preventDefault();
     const empVal = emp.value.trim();
     const comVal = com.value.trim();
 
-    if (!empVal || !/^[0-9]+$/.test(empVal)){
+    if (!empVal || !validEmp(empVal)){
       msg.textContent = "Ingresa un número de empleado válido.";
       emp.focus();
       return;
@@ -156,6 +172,7 @@ function openOtroDialog(onSubmit){
     close();
   });
 }
+
 
 
 
