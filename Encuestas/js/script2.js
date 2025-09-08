@@ -48,10 +48,150 @@ function setInteraction(on){ if (contenedor) contenedor.style.pointerEvents = on
 function setPreguntaPrincipal(){ preguntaEl && (preguntaEl.textContent="¿Qué tal estuvo el servicio de transporte?"); btnBack && btnBack.classList.add("oculto"); }
 function setPreguntaSecundaria(){ preguntaEl && (preguntaEl.textContent=`¿Por qué calificaste “${seleccionPrincipal}”?`); btnBack && btnBack.classList.remove("oculto"); }
 
-// ===== Formulario “Otro” =====
-// ===== Formulario “Otro” con soporte Enter (iPad/iOS) =====
-// ===== Formulario “Otro” con soporte Enter (iPad + Android) =====
-// ===== Formulario “Otro” con soporte Enter (iPad + Android + IME raros) =====
+// ===============================
+function forceHome(){
+  state = STATE.HOME;
+  cancelScheduledReset();
+  setInteraction(true);
+  seleccionPrincipal=null;
+  setPreguntaPrincipal();
+  contenedor.innerHTML="";
+  opcionesPrincipales.forEach(op=>{
+    const btn=document.createElement("button");
+    btn.type="button";
+    btn.className=`boton-grande ${op.tipo==="positivo"?"boton-positivo":"boton-negativo"}`;
+    btn.textContent=op.texto;
+    btn.onclick=()=>{
+      if (clickLock) return;
+      if (!guardFast()) return;
+      lockClicks(); cancelScheduledReset();
+      // Reintento FS/WakeLock
+      if (!document.fullscreenElement) { enterFullscreen(); }
+      if (!wakeLock) { requestWakeLock(); }
+
+      seleccionPrincipal=op.texto;
+      showSecondary(op.tipo);
+    };
+    contenedor.appendChild(btn);
+  });
+
+  if (!document.fullscreenElement && btnFullscreen?.classList.contains("oculto")) {
+    enterFullscreen();
+  }
+}
+
+function showSecondary(tipo){
+  state=STATE.SECONDARY; cancelScheduledReset(); setInteraction(true);
+  setPreguntaSecundaria(); contenedor.innerHTML="";
+  (tipo==="negativo"?opcionesNegativas:opcionesPositivas).forEach(opcion=>{
+    const btn=document.createElement("button");
+    btn.type="button"; btn.className="boton-grande"; btn.textContent=opcion;
+    btn.onclick=()=>{
+      if (clickLock) return;
+      if (!guardFast()) return;
+      lockClicks(); cancelScheduledReset();
+      // Reintento FS/WakeLock
+      if (!document.fullscreenElement) { enterFullscreen(); }
+      if (!wakeLock) { requestWakeLock(); }
+
+      if (opcion === "Otro"){
+        openOtroDialog(({ empleado, comentario })=>{
+          showThankYou("Otro", { otro: { empleado, comentario } });
+        });
+      } else {
+        showThankYou(opcion);
+      }
+    };
+    contenedor.appendChild(btn);
+  });
+}
+
+function showThankYou(motivo, extraMeta = {}){
+  state = STATE.THANKYOU;
+  setInteraction(false);
+  enviarRespuesta(seleccionPrincipal, motivo, extraMeta);
+  contenedor.innerHTML=`
+    <div class="mensaje-agradecimiento">
+      ¡Gracias por tu opinión!<br/><small>${seleccionPrincipal} · ${motivo}</small>
+    </div>`;
+  scheduleReset(1500);
+}
+
+// ===============================
+async function enviarRespuesta(principal, motivo, extraMeta = {}){
+  const payload = {
+    sede: SEDE,
+    dispositivo_id: DEVICE_ID,
+    tipo: APP_TIPO,
+    calificacion: principal,
+    motivo,
+    meta:{
+      ua: navigator.userAgent,
+      screen: `${screen.width}x${screen.height}`,
+      ts: new Date().toISOString(),
+      ...extraMeta
+    }
+  };
+  try{
+    const r = await fetch(`${API_URL}/api/respuestas`, { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(payload) });
+    if (!r.ok) throw 0;
+  }catch{
+    const q = JSON.parse(localStorage.getItem(QUEUE_KEY) || "[]"); q.push(payload);
+    localStorage.setItem(QUEUE_KEY, JSON.stringify(q));
+    pruneQueue(1000);
+  }
+}
+async function flushQueue(){
+  const q = JSON.parse(localStorage.getItem(QUEUE_KEY) || "[]");
+  if (!q.length) return;
+  const rest=[];
+  for (const item of q){
+    try{
+      const r=await fetch(`${API_URL}/api/respuestas`, { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(item) });
+      if (!r.ok) throw 0;
+    }catch{ rest.push(item); }
+  }
+  localStorage.setItem(QUEUE_KEY, JSON.stringify(rest));
+  pruneQueue(1000);
+}
+function pruneQueue(max=1000){
+  const q = JSON.parse(localStorage.getItem(QUEUE_KEY) || "[]");
+  if (q.length > max){
+    localStorage.setItem(QUEUE_KEY, JSON.stringify(q.slice(q.length - max)));
+  }
+}
+
+// ===============================
+async function enterFullscreen(){
+  try{
+    const el=document.documentElement;
+    if (el.requestFullscreen) await el.requestFullscreen();
+    else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen();
+    btnFullscreen?.classList.add("oculto");
+  }catch{}
+}
+function setupFullscreen(){
+  if (!btnFullscreen) return;
+  btnFullscreen.addEventListener("click", enterFullscreen);
+  document.addEventListener("fullscreenchange", ()=>{
+    if (!btnFullscreen) return;
+    if (document.fullscreenElement) btnFullscreen.classList.add("oculto");
+    else btnFullscreen.classList.remove("oculto");
+    if (!wakeLock) requestWakeLock();
+  });
+}
+async function requestWakeLock(){
+  try{
+    if ("wakeLock" in navigator){
+      wakeLock = await navigator.wakeLock.request("screen");
+      wakeLock.addEventListener?.("release", ()=>{ wakeLock = null; });
+    }
+  }catch{}
+}
+function setupWakeLock(){ document.addEventListener("visibilitychange", ()=>{ if (document.visibilityState==="visible" && !wakeLock) requestWakeLock(); }); }
+function setupBack(){ if (!btnBack) return; btnBack.addEventListener("click", ()=>{ if (clickLock) return; if (!guardFast()) return; lockClicks(); cancelScheduledReset(); forceHome(); }); }
+
+// ===== Formulario “Otro” (iPad + Android) =====
 function openOtroDialog(onSubmit){
   const wrap = document.createElement("div");
   wrap.style.position="fixed"; wrap.style.inset="0"; wrap.style.zIndex="200";
@@ -97,53 +237,31 @@ function openOtroDialog(onSubmit){
   const btnCancel = wrap.querySelector("#otro-cancel");
   const card = wrap.querySelector("#otro-card");
 
-  // No cerrar por tocar el fondo (evita cierres accidentales)
-  btnCancel.onclick = close;
+  function close(){ cleanupViewport(); wrap.remove(); }
+  btnCancel.onclick = close; // evitar cierre por fondo accidental
 
-  // Foco inicial y centrado
-  setTimeout(()=>{
-    emp.focus({ preventScroll:false });
-    emp.scrollIntoView({ block:"center", behavior:"smooth" });
-  }, 50);
+  setTimeout(()=>{ emp.focus({ preventScroll:false }); emp.scrollIntoView({ block:"center", behavior:"smooth" }); }, 50);
 
-  // Mantener la tarjeta visible cuando aparece el teclado (Android/iOS)
   const vv = window.visualViewport;
   const keepInView = ()=> card?.scrollIntoView({ block:"center" });
   vv?.addEventListener("resize", keepInView);
   vv?.addEventListener("scroll", keepInView);
-
   function cleanupViewport(){
     vv?.removeEventListener("resize", keepInView);
     vv?.removeEventListener("scroll", keepInView);
   }
 
-  function close(){ cleanupViewport(); wrap.remove(); }
-
-  // Helpers
   const isEnter = (ev)=> ev.key === "Enter" || ev.keyCode === 13;
   const validEmp = (v)=> /^[0-9]+$/.test(v.trim());
 
-  // Enter en EMPLEADO -> COMENTARIO (si válido)
   function goToComment(){
     const v = emp.value.trim();
-    if (!v || !validEmp(v)){
-      msg.textContent = "Ingresa un número de empleado válido.";
-      emp.focus();
-      return;
-    }
-    com.focus({ preventScroll:false });
-    com.scrollIntoView({ block:"center", behavior:"smooth" });
-    msg.textContent = "";
+    if (!v || !validEmp(v)){ msg.textContent = "Ingresa un número de empleado válido."; emp.focus(); return; }
+    com.focus({ preventScroll:false }); com.scrollIntoView({ block:"center", behavior:"smooth" }); msg.textContent = "";
   }
   emp.addEventListener("keydown", (ev)=>{ if (isEnter(ev)) { ev.preventDefault(); goToComment(); } });
   emp.addEventListener("keyup",   (ev)=>{ if (isEnter(ev)) { ev.preventDefault(); } });
 
-  // Algunos teclados en Android no emiten keydown/keyup en la acción → capturamos blur
-  emp.addEventListener("blur", ()=>{
-    if (document.activeElement === com) return; // ya cambió solo
-  });
-
-  // Enter en COMENTARIO -> submit
   function trySubmit(){
     if (form.requestSubmit) form.requestSubmit();
     else form.dispatchEvent(new Event("submit", {cancelable:true, bubbles:true}));
@@ -151,144 +269,16 @@ function openOtroDialog(onSubmit){
   com.addEventListener("keydown", (ev)=>{ if (isEnter(ev)) { ev.preventDefault(); trySubmit(); } });
   com.addEventListener("keyup",   (ev)=>{ if (isEnter(ev)) { ev.preventDefault(); } });
 
-  // Fallback: si el teclado ejecuta "Enviar" sin key events, el navegador dispara submit
   form.addEventListener("submit", (e)=>{
     e.preventDefault();
     const empVal = emp.value.trim();
     const comVal = com.value.trim();
-
-    if (!empVal || !validEmp(empVal)){
-      msg.textContent = "Ingresa un número de empleado válido.";
-      emp.focus();
-      return;
-    }
-    if (!comVal || comVal.length < 3){
-      msg.textContent = "Escribe un comentario (mín. 3 caracteres).";
-      com.focus();
-      return;
-    }
-
+    if (!empVal || !validEmp(empVal)){ msg.textContent = "Ingresa un número de empleado válido."; emp.focus(); return; }
+    if (!comVal || comVal.length < 3){ msg.textContent = "Escribe un comentario (mín. 3 caracteres)."; com.focus(); return; }
     onSubmit({ empleado: empVal, comentario: comVal });
     close();
   });
 }
-
-
-
-// ===============================
-function forceHome(){
-  state = STATE.HOME;
-  cancelScheduledReset();
-  setInteraction(true);
-  seleccionPrincipal=null;
-  setPreguntaPrincipal();
-  contenedor.innerHTML="";
-  opcionesPrincipales.forEach(op=>{
-    const btn=document.createElement("button");
-    btn.type="button";
-    btn.className=`boton-grande ${op.tipo==="positivo"?"boton-positivo":"boton-negativo"}`;
-    btn.textContent=op.texto;
-    btn.onclick=()=>{
-      if (clickLock) return;
-      if (!guardFast()) return;
-      lockClicks(); cancelScheduledReset();
-      seleccionPrincipal=op.texto;
-      showSecondary(op.tipo);
-    };
-    contenedor.appendChild(btn);
-  });
-
-  if (!document.fullscreenElement && btnFullscreen?.classList.contains("oculto")) {
-    enterFullscreen();
-  }
-}
-
-function showSecondary(tipo){
-  state=STATE.SECONDARY; cancelScheduledReset(); setInteraction(true);
-  setPreguntaSecundaria(); contenedor.innerHTML="";
-  (tipo==="negativo"?opcionesNegativas:opcionesPositivas).forEach(opcion=>{
-    const btn=document.createElement("button");
-    btn.type="button"; btn.className="boton-grande"; btn.textContent=opcion;
-    btn.onclick=()=>{
-      if (clickLock) return;
-      if (!guardFast()) return;
-      lockClicks(); cancelScheduledReset();
-
-      if (opcion === "Otro"){
-        openOtroDialog((extra)=>{ showThankYou(opcion, extra); });
-      }else{
-        showThankYou(opcion, null);
-      }
-    };
-    contenedor.appendChild(btn);
-  });
-}
-
-function showThankYou(motivo, extraMeta){
-  state=STATE.THANKYOU;
-  setInteraction(false);
-  enviarRespuesta(seleccionPrincipal, motivo, extraMeta);
-  contenedor.innerHTML=`
-    <div class="mensaje-agradecimiento">
-      ¡Gracias por tu opinión!<br/><small>${seleccionPrincipal} · ${motivo}${extraMeta? " · #" + extraMeta.empleado : ""}</small>
-    </div>`;
-  scheduleReset(1500);
-}
-
-// ===============================
-async function enviarRespuesta(principal, motivo, extraMeta){
-  const payload = {
-    sede:SEDE, dispositivo_id:DEVICE_ID, tipo:APP_TIPO,
-    calificacion:principal, motivo,
-    meta:{
-      ua:navigator.userAgent,
-      screen:`${screen.width}x${screen.height}`,
-      ts:new Date().toISOString(),
-      ...(extraMeta ? { otro: { empleado: String(extraMeta.empleado||"").trim(), comentario: String(extraMeta.comentario||"").trim() } } : {})
-    }
-  };
-  try{
-    const r = await fetch(`${API_URL}/api/respuestas`, { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(payload) });
-    if (!r.ok) throw 0;
-  }catch{
-    const q = JSON.parse(localStorage.getItem(QUEUE_KEY) || "[]"); q.push(payload);
-    localStorage.setItem(QUEUE_KEY, JSON.stringify(q));
-  }
-}
-async function flushQueue(){
-  const q = JSON.parse(localStorage.getItem(QUEUE_KEY) || "[]");
-  if (!q.length) return;
-  const rest=[];
-  for (const item of q){
-    try{
-      const r=await fetch(`${API_URL}/api/respuestas`, { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(item) });
-      if (!r.ok) throw 0;
-    }catch{ rest.push(item); }
-  }
-  localStorage.setItem(QUEUE_KEY, JSON.stringify(rest));
-}
-
-// ===============================
-async function enterFullscreen(){
-  try{
-    const el=document.documentElement;
-    if (el.requestFullscreen) await el.requestFullscreen();
-    else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen();
-    btnFullscreen?.classList.add("oculto");
-  }catch{}
-}
-function setupFullscreen(){
-  if (!btnFullscreen) return;
-  btnFullscreen.addEventListener("click", enterFullscreen);
-  document.addEventListener("fullscreenchange", ()=>{
-    if (!btnFullscreen) return;
-    if (document.fullscreenElement) btnFullscreen.classList.add("oculto");
-    else btnFullscreen.classList.remove("oculto");
-  });
-}
-async function requestWakeLock(){ try{ if ("wakeLock" in navigator){ wakeLock=await navigator.wakeLock.request("screen"); } }catch{} }
-function setupWakeLock(){ document.addEventListener("visibilitychange", ()=>{ if (document.visibilityState==="visible" && !wakeLock) requestWakeLock(); }); }
-function setupBack(){ if (!btnBack) return; btnBack.addEventListener("click", ()=>{ if (clickLock) return; if (!guardFast()) return; lockClicks(); cancelScheduledReset(); forceHome(); }); }
 
 // ===============================
 function init(){
