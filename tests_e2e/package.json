@@ -1,0 +1,13 @@
+{
+  "name": "encuestas-e2e",
+  "private": true,
+  "devDependencies": {
+    "@playwright/test": "^1.48.2"
+  },
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test --ui",
+    "install-browsers": "npx playwright install --with-deps"
+  }
+}
