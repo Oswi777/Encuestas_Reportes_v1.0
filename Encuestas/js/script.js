@@ -6,7 +6,7 @@ let API_URL   = "https://encuestas-reportes.onrender.com";
 let DEVICE_ID = "tablet-comedor-01";
 let SEDE      = "Saltillo";
 const APP_TIPO  = "comedor";
-const APP_ID    = "comedor";       // namespace por app
+const APP_ID    = "comedor";       
 const QUEUE_KEY = "queue_comedor";
 
 // ===============================
